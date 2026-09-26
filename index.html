@@ -1866,22 +1866,41 @@
     });
 
     // データのインポートとエクスポート機能の実装
-    function exportData() {
-      const exportObj = {
-        transactions,
-        expenseCategories,
-        incomeCategories,
-        recurringList,
-        recurringLogs
-      };
-      
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", "kakeibo_data.json");
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+    async function exportJsonData(jsonData, fileName = 'kakeibo_data.json') {
+      const jsonString = JSON.stringify(jsonData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+
+      // 1. スマホの「共有」メニュー（Web Share API）が使える場合（iOS/Android共通で最も確実）
+      if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: 'application/json' })] })) {
+        try {
+          const file = new File([blob], fileName, { type: 'application/json' });
+          await navigator.share({
+            files: [file],
+            title: '家計簿データバックアップ',
+          });
+          return; // 共有メニューが開いて保存できたら終了
+        } catch (err) {
+          // ユーザーが共有をキャンセルした場合は何もしない
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      // 2. パソコンや上記が使えないブラウザ向けの従来型ダウンロード
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+  
+      // iOS Safari対策：別タブで直接開かせて手動保存させる
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        window.open(url, '_blank');
+      } else {
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+  
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function importData() {
