@@ -1866,6 +1866,19 @@
     });
 
     // データのインポートとエクスポート機能の実装
+    function exportData() {
+      const exportPayload = {
+        transactions: transactions,
+        expenseCategories: expenseCategories,
+        incomeCategories: incomeCategories,
+        recurringList: recurringList,
+        recurringLogs: recurringLogs
+      };
+      
+      const fileName = `kakeibo_backup_${new Date().toISOString().split('T')[0]}.json`;
+      exportJsonData(exportPayload, fileName);
+    }
+    
     async function exportJsonData(jsonData, fileName = 'kakeibo_data.json') {
       const jsonString = JSON.stringify(jsonData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
