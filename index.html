@@ -422,7 +422,7 @@
         </div>
       </div>
 
-      <!-- 追加: データ管理タブ -->
+      <!-- データ管理タブ -->
       <div id="mode-set-data" class="space-y-4 hidden">
         <div class="bg-slate-50 p-4 rounded-xl border space-y-3">
           <h2 class="text-xs font-bold text-slate-700 border-b pb-2">💾 データのインポート / エクスポート</h2>
@@ -498,7 +498,6 @@
       ];
 
       const nowYear = new Date().getFullYear();
-      const nowMonth = new Date().getMonth() + 1
 
       let yearOpts = '';
       for (let y = nowYear - 5; y <= nowYear + 5; y++) {
@@ -523,9 +522,9 @@
 
         if (idx === 0 || idx === 1) { 
           sy.value = nowYear;
-          sm.value = nowMonth;
+          sm.value = 1;
           ey.value = nowYear;
-          em.value = nowMonth;
+          em.value = 12;
         } else if (idx === 2) { 
           sy.value = nowYear - 1;
           sm.value = 1;
@@ -590,7 +589,6 @@
       const recContainer = document.getElementById('mode-set-recurring');
       const dataContainer = document.getElementById('mode-set-data');
 
-      // 一旦すべてのボタンとコンテナを非アクティブ化
       [btnCat, btnRec, btnData].forEach(btn => btn.className = "flex-1 py-1.5 rounded-lg text-slate-400 hover:text-slate-700 transition");
       [catContainer, recContainer, dataContainer].forEach(div => div.classList.add('hidden'));
 
@@ -936,7 +934,7 @@
 
       for (let i = 0; i < firstDay; i++) {
         const emptyCell = document.createElement('div');
-        emptyCell.className = "h-14 bg-slate-50 rounded-lg opacity-30";
+        emptyCell.className = "h-16 bg-slate-50 rounded-lg opacity-30";
         grid.appendChild(emptyCell);
       }
 
@@ -948,7 +946,18 @@
         const dayIncome = dayTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
 
         const cell = document.createElement('div');
-        cell.className = "h-14 p-1 border rounded-lg bg-white hover:bg-slate-50 cursor-pointer flex flex-col justify-between transition";
+        
+        // 【レイアウト改善】支出や収入の有無によってセルの背景色をうっすら変えて視認性を向上
+        let bgClass = "bg-white hover:bg-slate-50 border-slate-200";
+        if (dayExpense > 0 && dayIncome === 0) {
+          bgClass = "bg-red-50/60 hover:bg-red-50 border-red-200";
+        } else if (dayIncome > 0 && dayExpense === 0) {
+          bgClass = "bg-blue-50/60 hover:bg-blue-50 border-blue-200";
+        } else if (dayIncome > 0 && dayExpense > 0) {
+          bgClass = "bg-purple-50/60 hover:bg-purple-50 border-purple-200";
+        }
+
+        cell.className = `h-16 p-1 border rounded-lg ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
         cell.onclick = () => {
           dateInput.value = dateStr;
           document.getElementById('filter-start').value = dateStr;
@@ -959,11 +968,12 @@
         };
 
         let badgeHtml = '';
-        if (dayExpense > 0) badgeHtml += `<span class="text-[11px] text-red-500 truncate">-¥${dayExpense}</span>`;
-        if (dayIncome > 0) badgeHtml += `<span class="text-[11px] text-blue-500 truncate">+¥${dayIncome}</span>`;
+        // 【レイアウト改善】カンマ区切りにし、スマホでも読みやすい太字・サイズに調整
+        if (dayExpense > 0) badgeHtml += `<span class="text-[10px] sm:text-xs text-red-600 font-bold truncate">-¥${dayExpense.toLocaleString()}</span>`;
+        if (dayIncome > 0) badgeHtml += `<span class="text-[10px] sm:text-xs text-blue-600 font-bold truncate">+¥${dayIncome.toLocaleString()}</span>`;
 
         cell.innerHTML = `
-          <span class="font-bold text-slate-700 text-left">${day}</span>
+          <span class="font-bold text-slate-700 text-left text-xs">${day}</span>
           <div class="flex flex-col text-right font-semibold leading-tight">${badgeHtml}</div>
         `;
         grid.appendChild(cell);
@@ -995,13 +1005,11 @@
              lastRenderedDate = item.date;
           }
 
-          // 元の配列におけるインデックスを取得
           const originalIndex = transactions.indexOf(item);
 
           const li = document.createElement('li');
           li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border text-xs shadow-sm ml-2 cursor-pointer hover:bg-slate-100 transition';
           
-          // クリックで編集画面へ遷移
           li.onclick = () => {
             editTx(originalIndex);
             switchView('form');
@@ -1865,55 +1873,22 @@
       updateUI();
     });
 
-    // データのインポートとエクスポート機能の実装
     function exportData() {
-      const exportPayload = {
-        transactions: transactions,
-        expenseCategories: expenseCategories,
-        incomeCategories: incomeCategories,
-        recurringList: recurringList,
-        recurringLogs: recurringLogs
+      const exportObj = {
+        transactions,
+        expenseCategories,
+        incomeCategories,
+        recurringList,
+        recurringLogs
       };
       
-      const fileName = `kakeibo_backup_${new Date().toISOString().split('T')[0]}.json`;
-      exportJsonData(exportPayload, fileName);
-    }
-    
-    async function exportJsonData(jsonData, fileName = 'kakeibo_data.json') {
-      const jsonString = JSON.stringify(jsonData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-
-      // 1. スマホの「共有」メニュー（Web Share API）が使える場合（iOS/Android共通で最も確実）
-      if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: 'application/json' })] })) {
-        try {
-          const file = new File([blob], fileName, { type: 'application/json' });
-          await navigator.share({
-            files: [file],
-            title: '家計簿データバックアップ',
-          });
-          return; // 共有メニューが開いて保存できたら終了
-        } catch (err) {
-          // ユーザーが共有をキャンセルした場合は何もしない
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      // 2. パソコンや上記が使えないブラウザ向けの従来型ダウンロード
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-  
-      // iOS Safari対策：別タブで直接開かせて手動保存させる
-      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-        window.open(url, '_blank');
-      } else {
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-  
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "kakeibo_data.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
     }
 
     function importData() {
@@ -1948,7 +1923,7 @@
             updateUI();
             
             alert('データのインポートが完了しました。');
-            fileInput.value = ''; // ファイル入力をリセット
+            fileInput.value = '';
           }
         } catch (error) {
           alert('ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。');
@@ -1961,28 +1936,6 @@
     updateCategoryOptions();
     checkAndApplyRecurring();
     updateUI();
-    
-    // PWA用：オフラインでも動くようにファイルをキャッシュ（保存）する設定
-    if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      const swCode = `
-        const CACHE_NAME = 'kakeibo-v1';
-        self.addEventListener('install', (e) => {
-          e.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => cache.addAll(['./']))
-          );
-        });
-        self.addEventListener('fetch', (e) => {
-          e.respondWith(
-            caches.match(e.request).then((res) => res || fetch(e.request))
-          );
-        });
-      `;
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const blobUrl = URL.createObjectURL(blob);
-      navigator.serviceWorker.register(blobUrl);
-    });
-   }
   </script>
 </body>
 </html>
