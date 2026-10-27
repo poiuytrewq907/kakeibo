@@ -334,6 +334,16 @@
     </div>
   </div>
 
+  <!-- 登録内容確認用ポップアップ（モーダル） -->
+  <div id="result-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4 text-center">
+      <div class="text-3xl">✅</div>
+      <h3 id="result-modal-title" class="text-sm font-bold text-slate-700">追加しました</h3>
+      <div id="result-modal-content" class="bg-slate-50 p-3 rounded-xl border text-xs text-left space-y-1 font-medium text-slate-600"></div>
+      <button type="button" onclick="closeResultModal()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition">OK</button>
+    </div>
+  </div>
+
   <script>
     const defaultExpenseCategories = ["食費", "日用品", "住居・光熱費", "交際費", "交通費", "その他"];
     const defaultIncomeCategories = ["給与", "副収入", "臨時収入", "その他"];
@@ -765,7 +775,9 @@
       const amount = Number(document.getElementById('modal-amount').value);
       const memo = document.getElementById('modal-memo').value;
 
-      if (editingTxIndex > -1) {
+      const isEditing = editingTxIndex > -1;
+
+      if (isEditing) {
         transactions[editingTxIndex] = { type, date, category, amount, memo };
       } else {
         transactions.push({ type, date, category, amount, memo });
@@ -778,6 +790,33 @@
 
       closeTxModal();
       updateUI();
+
+      // 追加・更新内容をポップアップで表示する
+      showResultPopup(isEditing ? '更新しました！' : '追加しました！', type, date, category, amount, memo);
+    }
+
+    // 登録内容確認ポップアップの表示・非表示
+    function showResultPopup(title, type, date, category, amount, memo) {
+      const modal = document.getElementById('result-modal');
+      const titleEl = document.getElementById('result-modal-title');
+      const contentEl = document.getElementById('result-modal-content');
+
+      titleEl.textContent = title;
+      const typeStr = type === 'income' ? '収入' : '支出';
+      const typeColor = type === 'income' ? 'text-blue-600' : 'text-red-600';
+
+      contentEl.innerHTML = `
+        <p>📅 日付: ${date}</p>
+        <p>🏷️ タイプ: <span class="${typeColor} font-bold">${typeStr}</span></p>
+        <p>📂 カテゴリ: ${category}</p>
+        <p>💰 金額: ¥${Number(amount).toLocaleString()}</p>
+        <p>📝 メモ: ${memo || '-'}</p>
+      `;
+      modal.classList.remove('hidden');
+    }
+
+    function closeResultModal() {
+      document.getElementById('result-modal').classList.add('hidden');
     }
 
     function renderCalendar() {
@@ -832,7 +871,6 @@
         }
 
         cell.className = `h-16 p-0.5 border rounded-md ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
-        // カレンダーの日付セルをタップすると、その日付がセットされたポップアップが開く
         cell.onclick = () => {
           openTxModal(dateStr);
         };
