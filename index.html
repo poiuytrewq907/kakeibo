@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>シンプル家計簿</title>
+  <title>簡単家計簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- ドラッグ＆ドロップ用ライブラリ (SortableJS) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -11,14 +11,18 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 p-2 sm:p-4 min-h-screen">
-  <!-- スマホで見切れないよう、外側のパディングをスマホ時は狭く(p-3)、PC時は広く(sm:p-6)調整 -->
   <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg p-3 sm:p-6 space-y-4">
-    <h1 class="text-xl font-bold text-center text-slate-700">簡単家計簿</h1>
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-slate-700">簡単家計簿</h1>
+      <button onclick="openTxModal()" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-slate-700 transition shadow-sm flex items-center gap-1">
+        <span>＋ 収支を追加</span>
+      </button>
+    </div>
 
     <!-- 画面切り替えタブ -->
     <div class="flex border-b text-[11px] sm:text-xs font-bold text-center">
       <button id="tab-calendar" onclick="switchView('calendar')" class="flex-1 py-2 border-b-2 border-slate-800 text-slate-800">📅 カレンダー</button>
-      <button id="tab-form" onclick="switchView('form')" class="flex-1 py-2 text-slate-400 border-b-2 border-transparent">📝 入力・履歴</button>
+      <button id="tab-history" onclick="switchView('history')" class="flex-1 py-2 text-slate-400 border-b-2 border-transparent">📝 履歴一覧</button>
       <button id="tab-cross" onclick="switchView('cross')" class="flex-1 py-2 text-slate-400 border-b-2 border-transparent">📊 分析</button>
       <button id="tab-settings" onclick="switchView('settings')" class="flex-1 py-2 text-slate-400 border-b-2 border-transparent">⚙️ 設定</button>
     </div>
@@ -46,7 +50,6 @@
         <button onclick="changeMonth(1)" class="p-1 text-slate-500 hover:text-slate-800 font-bold text-xs">次月 &gt;</button>
       </div>
 
-      <!-- 曜日ヘッダー（隙間を極限まで詰める） -->
       <div class="grid grid-cols-7 text-center text-xs font-bold text-slate-400 border-b pb-1 gap-0.5">
         <span class="text-red-400">日</span>
         <span>月</span>
@@ -57,7 +60,6 @@
         <span class="text-blue-400">土</span>
       </div>
 
-      <!-- カレンダーの日付グリッド（隙間を極限まで詰める） -->
       <div id="calendar-grid" class="grid grid-cols-7 gap-0.5 text-center text-xs"></div>
 
       <!-- カレンダー下の追加セクション：当月の収支履歴 ＆ 支出割合円グラフ -->
@@ -81,84 +83,32 @@
       </div>
     </div>
 
-    <!-- ビュー2: 入力フォーム ＆ 履歴一覧 -->
-    <div id="view-form" class="space-y-6 hidden">
-      <form id="tx-form" class="space-y-4 bg-slate-50 p-4 rounded-xl border relative">
-        <div id="edit-badge" class="hidden absolute -top-3 left-4 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">編集中</div>
-        
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">収支タイプ</label>
-          <div class="flex gap-4">
-            <label class="flex items-center text-sm cursor-pointer font-medium">
-              <input type="radio" name="type" value="expense" checked onchange="updateCategoryOptions()" class="mr-1 accent-red-500"> 支出
-            </label>
-            <label class="flex items-center text-sm cursor-pointer font-medium">
-              <input type="radio" name="type" value="income" onchange="updateCategoryOptions()" class="mr-1 accent-blue-500"> 収入
-            </label>
+    <!-- ビュー2: 履歴一覧画面 -->
+    <div id="view-history" class="space-y-4 hidden">
+      <div class="flex flex-col gap-2 mb-3 bg-white p-3 rounded-xl border">
+        <div class="flex justify-between items-center">
+          <h2 class="text-sm font-bold text-slate-700">収支履歴一覧</h2>
+          <div class="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold text-slate-600 border">
+            <button type="button" onclick="changeHistoryMonth(-1)" class="px-1 hover:text-slate-900">&lt;</button>
+            <span id="history-month-label" class="min-w-[65px] text-center"></span>
+            <button type="button" onclick="changeHistoryMonth(1)" class="px-1 hover:text-slate-900">&gt;</button>
           </div>
         </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">日付</label>
-            <input type="date" id="date" class="w-full border rounded-lg p-2 text-xs bg-white" required>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">カテゴリ</label>
-            <select id="category" class="w-full border rounded-lg p-2 text-xs bg-white" required></select>
-          </div>
+        <div class="flex items-center gap-2 text-xs border-t pt-2 mt-1">
+          <span class="font-bold text-slate-500 whitespace-nowrap">日付指定:</span>
+          <input type="date" id="filter-start" onchange="updateUI()" class="border rounded p-1 w-full bg-slate-50 text-slate-600">
+          <span class="text-slate-400">～</span>
+          <input type="date" id="filter-end" onchange="updateUI()" class="border rounded p-1 w-full bg-slate-50 text-slate-600">
+          <button type="button" onclick="clearFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-2 py-1.5 rounded-lg whitespace-nowrap transition">クリア</button>
         </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">金額 (円)</label>
-          <input type="number" id="amount" placeholder="1000" min="1" class="w-full border rounded-lg p-2 text-sm bg-white" required>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">メモ</label>
-          <input type="text" id="memo" placeholder="スーパー買い物 など" class="w-full border rounded-lg p-2 text-sm bg-white">
-        </div>
-
-        <div class="flex gap-2">
-          <button type="submit" id="submit-btn" class="flex-1 bg-slate-800 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-slate-700 transition">追加する</button>
-          <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden bg-slate-300 text-slate-700 py-2.5 px-4 rounded-lg text-sm font-bold hover:bg-slate-400 transition">キャンセル</button>
-        </div>
-      </form>
-
-      <div>
-        <!-- 履歴フィルター部 -->
-        <div class="flex flex-col gap-2 mb-3 bg-white p-3 rounded-xl border">
-          <div class="flex justify-between items-center">
-            <h2 class="text-sm font-bold text-slate-700">収支履歴</h2>
-            <div class="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg text-xs font-bold text-slate-600 border">
-              <button type="button" onclick="changeHistoryMonth(-1)" class="px-1 hover:text-slate-900">&lt;</button>
-              <span id="history-month-label" class="min-w-[65px] text-center"></span>
-              <button type="button" onclick="changeHistoryMonth(1)" class="px-1 hover:text-slate-900">&gt;</button>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 text-xs border-t pt-2 mt-1">
-            <span class="font-bold text-slate-500 whitespace-nowrap">日付指定:</span>
-            <input type="date" id="filter-start" onchange="updateUI()" class="border rounded p-1 w-full bg-slate-50 text-slate-600">
-            <span class="text-slate-400">～</span>
-            <input type="date" id="filter-end" onchange="updateUI()" class="border rounded p-1 w-full bg-slate-50 text-slate-600">
-            <button type="button" onclick="clearFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-2 py-1.5 rounded-lg whitespace-nowrap transition">クリア</button>
-          </div>
-        </div>
-        
-        <ul id="tx-list" class="space-y-2 max-h-60 overflow-y-auto pr-1 pb-1"></ul>
       </div>
+      
+      <ul id="tx-list" class="space-y-2 max-h-[450px] overflow-y-auto pr-1 pb-1"></ul>
     </div>
 
-    <!-- ビュー3: 分析画面 -->
+    <!-- ビュー3: 分析画面（集計のみにスッキリ簡素化） -->
     <div id="view-cross" class="space-y-4 hidden">
-      <!-- サブモード切替（集計 / 比較） -->
-      <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold text-center border">
-        <button id="subtab-matrix" onclick="setCrossSubMode('matrix')" class="flex-1 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition">集計</button>
-        <button id="subtab-compare" onclick="setCrossSubMode('compare')" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-slate-700 transition">比較</button>
-      </div>
-
-      <!-- モード1: 集計モード -->
-      <div id="mode-matrix-container" class="space-y-4">
+      <div class="space-y-4">
         <!-- サマリー -->
         <div class="grid grid-cols-3 gap-2 text-center">
           <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100">
@@ -223,117 +173,6 @@
         <div id="cross-chart-wrapper" class="hidden bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div class="relative h-72 w-full">
             <canvas id="cross-chart-canvas"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- モード2: 比較モード -->
-      <div id="mode-compare-container" class="space-y-4 hidden">
-        <!-- 操作部 -->
-        <div class="bg-slate-50 p-3 rounded-xl border space-y-2 text-xs">
-          <div class="flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-2">
-              <div class="flex gap-1">
-                <button id="comp-btn-expense" onclick="setCompType('expense')" class="px-2.5 py-1 rounded-lg font-bold bg-red-500 text-white">支出</button>
-                <button id="comp-btn-income" onclick="setCompType('income')" class="px-2.5 py-1 rounded-lg font-bold bg-slate-200 text-slate-600">収入</button>
-                <button id="comp-btn-balance" onclick="setCompType('balance')" class="px-2.5 py-1 rounded-lg font-bold bg-slate-200 text-slate-600">収支差額</button>
-              </div>
-
-              <div class="flex bg-white border rounded-lg p-0.5 font-bold">
-                <button id="comp-view-table" onclick="setCompViewType('table')" class="px-2 py-0.5 rounded bg-slate-800 text-white">📋 表</button>
-                <button id="comp-view-chart" onclick="setCompViewType('chart')" class="px-2 py-0.5 rounded text-slate-500 hover:text-slate-800">📊 グラフ</button>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-1 bg-white border rounded-lg px-2 py-1.5 w-full mt-1">
-              <span class="font-bold text-slate-500 text-[10px]">🔍 対象 (チェックした項目のみ表示 / 未チェックですべて表示):</span>
-              <div class="flex flex-wrap gap-3 items-center">
-                <label class="flex items-center gap-1 font-bold text-indigo-600 border-r border-slate-300 pr-3">
-                  <input type="checkbox" id="comp-cat-total-only" onchange="renderCompareTables()"> 📊 全体合計のみ
-                </label>
-                <div id="comp-cat-filter" class="flex flex-wrap gap-3"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t">
-            <!-- 第一範囲 -->
-            <div class="bg-white p-2 rounded-lg border space-y-1">
-              <div class="font-bold text-slate-700 text-[11px] flex items-center justify-between">
-                <span>📌 第一範囲</span>
-                <div class="flex gap-1">
-                  <button onclick="shiftCompYear(1, -1)" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px]">&lt; 前年</button>
-                  <button onclick="shiftCompYear(1, 1)" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px]">次年 &gt;</button>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-1">
-                <div class="flex items-center gap-1">
-                  <select id="comp1-start-year" onchange="onCompRangeChange(1)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                  <select id="comp1-start-month" onchange="onCompRangeChange(1)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                </div>
-                <span class="text-slate-400 text-xs">～</span>
-                <div class="flex items-center gap-1">
-                  <select id="comp1-end-year" onchange="onCompRangeChange(1)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                  <select id="comp1-end-month" onchange="onCompRangeChange(1)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                </div>
-              </div>
-            </div>
-
-            <!-- 第二範囲 -->
-            <div class="bg-white p-2 rounded-lg border space-y-1">
-              <div class="font-bold text-slate-700 text-[11px] flex items-center justify-between">
-                <span>📌 第二範囲</span>
-                <div class="flex gap-1">
-                  <button onclick="shiftCompYear(2, -1)" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px]">&lt; 前年</button>
-                  <button onclick="shiftCompYear(2, 1)" class="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px]">次年 &gt;</button>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-1">
-                <div class="flex items-center gap-1">
-                  <select id="comp2-start-year" onchange="onCompRangeChange(2)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                  <select id="comp2-start-month" onchange="onCompRangeChange(2)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                </div>
-                <span class="text-slate-400 text-xs">～</span>
-                <div class="flex items-center gap-1">
-                  <select id="comp2-end-year" onchange="onCompRangeChange(2)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                  <select id="comp2-end-month" onchange="onCompRangeChange(2)" class="border rounded py-0.5 px-1 text-[11px] font-bold text-slate-700"></select>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 比較表エリア -->
-        <div id="comp-tables-wrapper" class="space-y-4">
-          <div class="space-y-1">
-            <h3 id="comp-title-1" class="text-xs font-bold text-slate-700 px-1"></h3>
-            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-              <div id="comp-table-1"></div>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <h3 id="comp-title-2" class="text-xs font-bold text-slate-700 px-1"></h3>
-            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-              <div id="comp-table-2"></div>
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <h3 id="comp-title-diff" class="text-xs font-bold text-slate-800 px-1 flex items-center justify-between">
-              <span>⚖️ 差分 (第一範囲 − 第二範囲)</span>
-              <span class="text-[10px] text-slate-500 font-normal">※第一範囲から第二範囲を引いた金額</span>
-            </h3>
-            <div class="overflow-x-auto rounded-xl border border-indigo-200 shadow-sm">
-              <div id="comp-table-diff"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 比較グラフエリア -->
-        <div id="comp-chart-wrapper" class="hidden bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div class="relative h-80 w-full">
-            <canvas id="comp-chart-canvas"></canvas>
           </div>
         </div>
       </div>
@@ -443,7 +282,55 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
+  <!-- 新規登録・編集用ポップアップ（モーダル） -->
+  <div id="tx-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4 relative">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 id="modal-title" class="text-xs font-bold text-slate-700">収支の追加</h3>
+        <button type="button" onclick="closeTxModal()" class="text-slate-400 hover:text-slate-700 font-bold text-sm">✕</button>
+      </div>
+      <form id="modal-tx-form" class="space-y-3" onsubmit="handleModalSubmit(event)">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">収支タイプ</label>
+          <div class="flex gap-4">
+            <label class="flex items-center text-xs cursor-pointer font-medium">
+              <input type="radio" name="modal-type" value="expense" checked onchange="updateModalCategoryOptions()" class="mr-1 accent-red-500"> 支出
+            </label>
+            <label class="flex items-center text-xs cursor-pointer font-medium">
+              <input type="radio" name="modal-type" value="income" onchange="updateModalCategoryOptions()" class="mr-1 accent-blue-500"> 収入
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">日付</label>
+            <input type="date" id="modal-date" class="w-full border rounded-lg p-2 text-xs bg-white" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">カテゴリ</label>
+            <select id="modal-category" class="w-full border rounded-lg p-2 text-xs bg-white" required></select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">金額 (円)</label>
+          <input type="number" id="modal-amount" placeholder="1000" min="1" class="w-full border rounded-lg p-2 text-sm bg-white" required>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">メモ</label>
+          <input type="text" id="modal-memo" placeholder="スーパー買い物 など" class="w-full border rounded-lg p-2 text-sm bg-white">
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="submit" id="modal-submit-btn" class="flex-1 bg-slate-800 text-white py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition">追加する</button>
+          <button type="button" onclick="closeTxModal()" class="bg-slate-200 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold hover:bg-slate-300 transition">キャンセル</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -462,22 +349,16 @@
     let historyDate = new Date();
     
     let calSubMode = 'history';
-    let crossSubMode = 'matrix'; 
     let crossType = 'expense';
-    let compType = 'expense';
-
     let crossViewType = 'table'; 
-    let compViewType = 'table';  
 
     let calPieChartInstance = null;
     let crossChartInstance = null;
-    let compChartInstance = null;
     
     let expenseSortable = null;
     let incomeSortable = null;
 
     let settingsMode = 'category'; 
-
     let editingTxIndex = -1; 
 
     const chartColors = [
@@ -485,20 +366,14 @@
       '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#64748b'
     ];
 
-    const form = document.getElementById('tx-form');
-    const recurringForm = document.getElementById('recurring-form');
     const txList = document.getElementById('tx-list');
     const recList = document.getElementById('recurring-list');
-    const dateInput = document.getElementById('date');
-
-    dateInput.value = new Date().toISOString().split('T')[0];
 
     function initCrossSelects() {
-      const ids = [
-        ['cross-start-year', 'cross-start-month', 'cross-end-year', 'cross-end-month'],
-        ['comp1-start-year', 'comp1-start-month', 'comp1-end-year', 'comp1-end-month'],
-        ['comp2-start-year', 'comp2-start-month', 'comp2-end-year', 'comp2-end-month']
-      ];
+      const sy = document.getElementById('cross-start-year');
+      const sm = document.getElementById('cross-start-month');
+      const ey = document.getElementById('cross-end-year');
+      const em = document.getElementById('cross-end-month');
 
       const nowYear = new Date().getFullYear();
 
@@ -512,29 +387,15 @@
         monthOpts += `<option value="${m}">${m}月</option>`;
       }
 
-      ids.forEach(([syId, smId, eyId, emId], idx) => {
-        const sy = document.getElementById(syId);
-        const sm = document.getElementById(smId);
-        const ey = document.getElementById(eyId);
-        const em = document.getElementById(emId);
+      sy.innerHTML = yearOpts;
+      ey.innerHTML = yearOpts;
+      sm.innerHTML = monthOpts;
+      em.innerHTML = monthOpts;
 
-        sy.innerHTML = yearOpts;
-        ey.innerHTML = yearOpts;
-        sm.innerHTML = monthOpts;
-        em.innerHTML = monthOpts;
-
-        if (idx === 0 || idx === 1) { 
-          sy.value = nowYear;
-          sm.value = 1;
-          ey.value = nowYear;
-          em.value = 12;
-        } else if (idx === 2) { 
-          sy.value = nowYear - 1;
-          sm.value = 1;
-          ey.value = nowYear - 1;
-          em.value = 12;
-        }
-      });
+      sy.value = nowYear;
+      sm.value = 1;
+      ey.value = nowYear;
+      em.value = 12;
     }
 
     function setCalSubMode(mode) {
@@ -556,30 +417,6 @@
         histContainer.classList.add('hidden');
       }
       renderCalendarBottom();
-    }
-
-    function setCrossSubMode(mode) {
-      crossSubMode = mode;
-      const btnMatrix = document.getElementById('subtab-matrix');
-      const btnCompare = document.getElementById('subtab-compare');
-      const matrixContainer = document.getElementById('mode-matrix-container');
-      const compareContainer = document.getElementById('mode-compare-container');
-
-      if (mode === 'matrix') {
-        btnMatrix.className = "flex-1 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition";
-        btnCompare.className = "flex-1 py-1.5 rounded-lg text-slate-400 hover:text-slate-700 transition";
-        matrixContainer.classList.remove('hidden');
-        compareContainer.classList.add('hidden');
-        updateCrossCatFilterOptions();
-        renderCrossTable();
-      } else {
-        btnCompare.className = "flex-1 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition";
-        btnMatrix.className = "flex-1 py-1.5 rounded-lg text-slate-400 hover:text-slate-700 transition";
-        compareContainer.classList.remove('hidden');
-        matrixContainer.classList.add('hidden');
-        updateCompCatFilterOptions();
-        renderCompareTables();
-      }
     }
 
     function setSettingsMode(mode) {
@@ -628,37 +465,16 @@
       renderCrossTable();
     }
 
-    function setCompViewType(type) {
-      compViewType = type;
-      const btnTable = document.getElementById('comp-view-table');
-      const btnChart = document.getElementById('comp-view-chart');
-      const tableWrap = document.getElementById('comp-tables-wrapper');
-      const chartWrap = document.getElementById('comp-chart-wrapper');
-
-      if (type === 'table') {
-        btnTable.className = "px-2 py-0.5 rounded bg-slate-800 text-white";
-        btnChart.className = "px-2 py-0.5 rounded text-slate-500 hover:text-slate-800";
-        tableWrap.classList.remove('hidden');
-        chartWrap.classList.add('hidden');
-      } else {
-        btnChart.className = "px-2 py-0.5 rounded bg-slate-800 text-white";
-        btnTable.className = "px-2 py-0.5 rounded text-slate-500 hover:text-slate-800";
-        tableWrap.classList.add('hidden');
-        chartWrap.classList.remove('hidden');
-      }
-      renderCompareTables();
-    }
-
     function switchView(view) {
       const views = {
         calendar: document.getElementById('view-calendar'),
-        form: document.getElementById('view-form'),
+        history: document.getElementById('view-history'),
         cross: document.getElementById('view-cross'),
         settings: document.getElementById('view-settings')
       };
       const tabs = {
         calendar: document.getElementById('tab-calendar'),
-        form: document.getElementById('tab-form'),
+        history: document.getElementById('tab-history'),
         cross: document.getElementById('tab-cross'),
         settings: document.getElementById('tab-settings')
       };
@@ -675,23 +491,13 @@
 
       if (view === 'calendar') renderCalendar();
       if (view === 'cross') {
-        if (crossSubMode === 'matrix') {
-          updateCrossCatFilterOptions();
-          renderCrossTable();
-        } else {
-          updateCompCatFilterOptions();
-          renderCompareTables();
-        }
+        updateCrossCatFilterOptions();
+        renderCrossTable();
       }
       if (view === 'settings') renderSettingsUI();
     }
 
     function updateCategoryOptions() {
-      const formType = document.querySelector('input[name="type"]:checked')?.value || 'expense';
-      const formCat = document.getElementById('category');
-      const targetCats = formType === 'income' ? incomeCategories : expenseCategories;
-      formCat.innerHTML = targetCats.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-
       const recType = document.getElementById('rec-type').value;
       const recCat = document.getElementById('rec-category');
       const recTargetCats = recType === 'income' ? incomeCategories : expenseCategories;
@@ -699,6 +505,13 @@
 
       localStorage.setItem('kakeibo_expense_categories', JSON.stringify(expenseCategories));
       localStorage.setItem('kakeibo_income_categories', JSON.stringify(incomeCategories));
+    }
+
+    function updateModalCategoryOptions() {
+      const formType = document.querySelector('input[name="modal-type"]:checked')?.value || 'expense';
+      const formCat = document.getElementById('modal-category');
+      const targetCats = formType === 'income' ? incomeCategories : expenseCategories;
+      formCat.innerHTML = targetCats.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
     document.getElementById('expense-category-form').addEventListener('submit', (e) => {
@@ -762,8 +575,7 @@
         onEnd: function () {
           expenseCategories = Array.from(expContainer.children).map(el => el.getAttribute('data-cat'));
           updateCategoryOptions();
-          if (crossSubMode === 'matrix') renderCrossTable();
-          else renderCompareTables();
+          renderCrossTable();
         }
       });
 
@@ -773,8 +585,7 @@
         onEnd: function () {
           incomeCategories = Array.from(incContainer.children).map(el => el.getAttribute('data-cat'));
           updateCategoryOptions();
-          if (crossSubMode === 'matrix') renderCrossTable();
-          else renderCompareTables();
+          renderCrossTable();
         }
       });
     }
@@ -877,6 +688,7 @@
       }
     }
 
+    const recurringForm = document.getElementById('recurring-form');
     recurringForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const type = document.getElementById('rec-type').value;
@@ -906,6 +718,66 @@
       recurringList.splice(index, 1);
       localStorage.setItem('kakeibo_recurring', JSON.stringify(recurringList));
       renderSettingsUI();
+    }
+
+    // ポップアップ（モーダル）を開く・閉じる・保存する関数
+    function openTxModal(dateStr = null, index = -1) {
+      editingTxIndex = index;
+      const modal = document.getElementById('tx-modal');
+      const title = document.getElementById('modal-title');
+      const submitBtn = document.getElementById('modal-submit-btn');
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-date').value = dateStr || todayStr;
+
+      if (editingTxIndex > -1) {
+        title.textContent = '収支の編集';
+        submitBtn.textContent = '更新する';
+        const tx = transactions[editingTxIndex];
+        document.querySelector(`input[name="modal-type"][value="${tx.type}"]`).checked = true;
+        updateModalCategoryOptions();
+        document.getElementById('modal-date').value = tx.date;
+        document.getElementById('modal-category').value = tx.category;
+        document.getElementById('modal-amount').value = tx.amount;
+        document.getElementById('modal-memo').value = tx.memo || '';
+      } else {
+        title.textContent = '収支の追加';
+        submitBtn.textContent = '追加する';
+        document.querySelector(`input[name="modal-type"][value="expense"]`).checked = true;
+        updateModalCategoryOptions();
+        document.getElementById('modal-amount').value = '';
+        document.getElementById('modal-memo').value = '';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTxModal() {
+      document.getElementById('tx-modal').classList.add('hidden');
+      editingTxIndex = -1;
+    }
+
+    function handleModalSubmit(e) {
+      e.preventDefault();
+      const type = document.querySelector('input[name="modal-type"]:checked').value;
+      const date = document.getElementById('modal-date').value;
+      const category = document.getElementById('modal-category').value;
+      const amount = Number(document.getElementById('modal-amount').value);
+      const memo = document.getElementById('modal-memo').value;
+
+      if (editingTxIndex > -1) {
+        transactions[editingTxIndex] = { type, date, category, amount, memo };
+      } else {
+        transactions.push({ type, date, category, amount, memo });
+      }
+
+      transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const [y, m] = date.split('-').map(Number);
+      historyDate = new Date(y, m - 1, 1);
+
+      closeTxModal();
+      updateUI();
     }
 
     function renderCalendar() {
@@ -959,19 +831,13 @@
           bgClass = "bg-purple-50/60 hover:bg-purple-50 border-purple-200";
         }
 
-        // セル自体の余白(p-0.5)をタイトにして、めいっぱい横幅と高さを確保
         cell.className = `h-16 p-0.5 border rounded-md ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
+        // カレンダーの日付セルをタップすると、その日付がセットされたポップアップが開く
         cell.onclick = () => {
-          dateInput.value = dateStr;
-          document.getElementById('filter-start').value = dateStr;
-          document.getElementById('filter-end').value = dateStr;
-          
-          updateUI();
-          switchView('form');
+          openTxModal(dateStr);
         };
 
         let badgeHtml = '';
-        // スマホ表示でも見切れないよう、文字サイズを text-[9px] に調整
         if (dayExpense > 0) badgeHtml += `<span class="text-[9px] sm:text-xs text-red-600 font-bold truncate">-¥${dayExpense.toLocaleString()}</span>`;
         if (dayIncome > 0) badgeHtml += `<span class="text-[9px] sm:text-xs text-blue-600 font-bold truncate">+¥${dayIncome.toLocaleString()}</span>`;
 
@@ -1013,10 +879,7 @@
           const li = document.createElement('li');
           li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border text-xs shadow-sm ml-2 cursor-pointer hover:bg-slate-100 transition';
           
-          li.onclick = () => {
-            editTx(originalIndex);
-            switchView('form');
-          };
+          li.onclick = () => openTxModal(null, originalIndex);
 
           li.innerHTML = `
             <div>
@@ -1201,19 +1064,6 @@
       if (startDate > endDate) {
         document.getElementById('cross-end-year').value = sY;
         document.getElementById('cross-end-month').value = sM;
-        eY = sY;
-        eM = sM;
-      }
-
-      const diffMonths = (eY - sY) * 12 + (eM - sM) + 1;
-      if (diffMonths > 12) {
-        const adjustedEnd = new Date(sY, sM - 1 + 11, 1);
-        const adjY = adjustedEnd.getFullYear();
-        const adjM = adjustedEnd.getMonth() + 1;
-
-        document.getElementById('cross-end-year').value = adjY;
-        document.getElementById('cross-end-month').value = adjM;
-        alert('表示期間の上限は12か月です。終了月を自動調整しました。');
       }
 
       renderCrossTable();
@@ -1287,162 +1137,6 @@
       });
     }
 
-    function updateCompCatFilterOptions() {
-      const container = document.getElementById('comp-cat-filter');
-      const checkedVals = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
-
-      let categories = [];
-      if (compType === 'expense') categories = [...expenseCategories];
-      else if (compType === 'income') categories = [...incomeCategories];
-      else categories = Array.from(new Set([...expenseCategories, ...incomeCategories]));
-
-      let html = '';
-      categories.forEach(cat => {
-        const checked = checkedVals.includes(cat) ? 'checked' : '';
-        html += `<label class="flex items-center gap-1 cursor-pointer text-slate-700 font-bold text-xs"><input type="checkbox" value="${cat}" onchange="renderCompareTables()" class="accent-slate-700" ${checked}> ${cat}</label>`;
-      });
-
-      container.innerHTML = html;
-    }
-
-    function renderCompareTables() {
-      const sY1 = Number(document.getElementById('comp1-start-year').value);
-      const sM1 = Number(document.getElementById('comp1-start-month').value);
-      const eY1 = Number(document.getElementById('comp1-end-year').value);
-      const eM1 = Number(document.getElementById('comp1-end-month').value);
-
-      const sY2 = Number(document.getElementById('comp2-start-year').value);
-      const sM2 = Number(document.getElementById('comp2-start-month').value);
-      const eY2 = Number(document.getElementById('comp2-end-year').value);
-      const eM2 = Number(document.getElementById('comp2-end-month').value);
-
-      const months1 = getMonthList(sY1, sM1, eY1, eM1);
-      const months2 = getMonthList(sY2, sM2, eY2, eM2);
-
-      document.getElementById('comp-title-1').textContent = `📌 第一範囲 (${sY1}/${sM1} ～ ${eY1}/${eM1})`;
-      document.getElementById('comp-title-2').textContent = `📌 第二範囲 (${sY2}/${sM2} ～ ${eY2}/${eM2})`;
-
-      const isTotalOnly = document.getElementById('comp-cat-total-only').checked;
-      const checkedBoxes = document.querySelectorAll('#comp-cat-filter input:checked');
-      const selectedCats = Array.from(checkedBoxes).map(cb => cb.value);
-
-      let baseCats = [];
-      if (compType === 'expense') baseCats = expenseCategories;
-      else if (compType === 'income') baseCats = incomeCategories;
-      else baseCats = Array.from(new Set([...expenseCategories, ...incomeCategories]));
-
-      let targetCats = [];
-      if (isTotalOnly) {
-        targetCats = [];
-      } else if (selectedCats.length > 0) {
-        targetCats = selectedCats;
-      } else {
-        const allActiveYM = [...months1.map(m => m.ymStr), ...months2.map(m => m.ymStr)];
-        const histCats = Array.from(new Set(
-          transactions
-            .filter(t => allActiveYM.includes(t.date.substring(0, 7)) && (compType === 'balance' || t.type === compType))
-            .map(t => t.category)
-        )).filter(c => !baseCats.includes(c));
-
-        targetCats = [...baseCats, ...histCats];
-      }
-
-      const matrix1 = {};
-      targetCats.forEach(c => matrix1[c] = Array(months1.length).fill(0));
-      const totals1 = Array(months1.length).fill(0);
-
-      const matrix2 = {};
-      targetCats.forEach(c => matrix2[c] = Array(months2.length).fill(0));
-      const totals2 = Array(months2.length).fill(0);
-
-      transactions.forEach(t => {
-        const ym = t.date.substring(0, 7);
-        const amt = Number(t.amount) || 0;
-
-        let isMatch = false;
-        let signed = amt;
-        if (compType === 'expense' && t.type === 'expense') isMatch = true;
-        if (compType === 'income' && t.type === 'income') isMatch = true;
-        if (compType === 'balance') {
-          isMatch = true;
-          signed = (t.type === 'income') ? amt : -amt;
-        }
-
-        if (!isMatch) return;
-
-        const idx1 = months1.findIndex(m => m.ymStr === ym);
-        if (idx1 !== -1) {
-          if (isTotalOnly) {
-            totals1[idx1] += signed;
-          } else if (targetCats.includes(t.category)) {
-            matrix1[t.category][idx1] += signed;
-            totals1[idx1] += signed;
-          }
-        }
-
-        const idx2 = months2.findIndex(m => m.ymStr === ym);
-        if (idx2 !== -1) {
-          if (isTotalOnly) {
-            totals2[idx2] += signed;
-          } else if (targetCats.includes(t.category)) {
-            matrix2[t.category][idx2] += signed;
-            totals2[idx2] += signed;
-          }
-        }
-      });
-
-      document.getElementById('comp-table-1').innerHTML = buildSingleCompTable(months1, targetCats, matrix1, totals1, compType);
-      document.getElementById('comp-table-2').innerHTML = buildSingleCompTable(months2, targetCats, matrix2, totals2, compType);
-      document.getElementById('comp-table-diff').innerHTML = buildDiffCompTable(months1, months2, targetCats, matrix1, matrix2, totals1, totals2, compType);
-
-      if (compViewType === 'chart') {
-        let chartData1 = totals1;
-        let chartData2 = totals2;
-        let labelSuffix = isTotalOnly ? ' (全体合計)' : (selectedCats.length === 1 ? ` (${selectedCats[0]})` : ' (全体合計)');
-
-        if (!isTotalOnly && selectedCats.length === 1) {
-          chartData1 = matrix1[selectedCats[0]] || Array(months1.length).fill(0);
-          chartData2 = matrix2[selectedCats[0]] || Array(months2.length).fill(0);
-        }
-
-        renderCompareLineChart(months1, months2, chartData1, chartData2, labelSuffix);
-      }
-    }
-
-    function shiftCompYear(rangeNum, diff) {
-      const syId = `comp${rangeNum}-start-year`;
-      const eyId = `comp${rangeNum}-end-year`;
-
-      const sYSelect = document.getElementById(syId);
-      const eYSelect = document.getElementById(eyId);
-
-      const newSY = Number(sYSelect.value) + diff;
-      const newEY = Number(eYSelect.value) + diff;
-
-      if (sYSelect.querySelector(`option[value="${newSY}"]`)) {
-        sYSelect.value = newSY;
-      }
-      if (eYSelect.querySelector(`option[value="${newEY}"]`)) {
-        eYSelect.value = newEY;
-      }
-
-      renderCompareTables();
-    }
-
-    function setCompType(type) {
-      compType = type;
-      const btnExp = document.getElementById('comp-btn-expense');
-      const btnInc = document.getElementById('comp-btn-income');
-      const btnBal = document.getElementById('comp-btn-balance');
-
-      btnExp.className = "px-2.5 py-1 rounded-lg font-bold " + (type === 'expense' ? "bg-red-500 text-white" : "bg-slate-200 text-slate-600");
-      btnInc.className = "px-2.5 py-1 rounded-lg font-bold " + (type === 'income' ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-600");
-      btnBal.className = "px-2.5 py-1 rounded-lg font-bold " + (type === 'balance' ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600");
-
-      updateCompCatFilterOptions();
-      renderCompareTables();
-    }
-
     function getMonthList(sy, sm, ey, em) {
       const months = [];
       let curr = new Date(sy, sm - 1, 1);
@@ -1459,72 +1153,6 @@
         curr.setMonth(curr.getMonth() + 1);
       }
       return months;
-    }
-
-    function renderCompareLineChart(months1, months2, data1, data2, labelSuffix = '') {
-      const ctx = document.getElementById('comp-chart-canvas').getContext('2d');
-
-      if (compChartInstance) {
-        compChartInstance.destroy();
-      }
-
-      const maxLen = Math.max(months1.length, months2.length);
-      const labels = [];
-      const chartData1 = [];
-      const chartData2 = [];
-
-      for (let i = 0; i < maxLen; i++) {
-        const m1Text = months1[i] ? `${months1[i].month}月` : '-';
-        const m2Text = months2[i] ? `${months2[i].month}月` : '-';
-        labels.push(`${i + 1}ヶ月目 (${m1Text} vs ${m2Text})`);
-
-        chartData1.push(data1[i] !== undefined ? data1[i] : null);
-        chartData2.push(data2[i] !== undefined ? data2[i] : null);
-      }
-
-      compChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '第一範囲' + labelSuffix,
-              data: chartData1,
-              borderColor: '#3b82f6',
-              backgroundColor: '#3b82f6',
-              borderWidth: 2.5,
-              tension: 0.2,
-              pointRadius: 4,
-              pointHoverRadius: 6
-            },
-            {
-              label: '第二範囲' + labelSuffix,
-              data: chartData2,
-              borderColor: '#f59e0b',
-              backgroundColor: '#f59e0b',
-              borderWidth: 2.5,
-              tension: 0.2,
-              pointRadius: 4,
-              pointHoverRadius: 6
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { font: { size: 11 } } },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => `${ctx.dataset.label}: ¥${(ctx.raw || 0).toLocaleString()}`
-              }
-            }
-          },
-          scales: {
-            y: { ticks: { callback: (v) => '¥' + v.toLocaleString() } }
-          }
-        }
-      });
     }
 
     function buildSingleCompTable(months, categories, matrix, totals, type) {
@@ -1611,144 +1239,6 @@
       return html;
     }
 
-    function buildDiffCompTable(months1, months2, categories, matrix1, matrix2, totals1, totals2, type) {
-      const maxLen = Math.max(months1.length, months2.length);
-
-      let html = `<table class="w-full text-xs text-slate-700 border-collapse">`;
-      html += `<thead class="bg-indigo-50 text-slate-700 border-b border-indigo-200"><tr>`;
-      html += `<th class="p-2 border-r border-indigo-200 font-bold text-left sticky left-0 bg-indigo-50 z-10 min-w-[90px]">カテゴリ</th>`;
-
-      for (let i = 0; i < maxLen; i++) {
-        const m1Text = months1[i] ? `${months1[i].month}月` : '-';
-        const m2Text = months2[i] ? `${months2[i].month}月` : '-';
-        html += `<th class="p-2 border-r border-indigo-200 font-bold text-center min-w-[65px]">${i + 1}ヶ月目<br><span class="text-[9px] font-normal text-slate-500">${m1Text} vs ${m2Text}</span></th>`;
-      }
-
-      html += `<th class="p-2 font-bold text-center bg-indigo-100 min-w-[75px]">合計差分</th></tr></thead><tbody>`;
-
-      let grandDiff = 0;
-
-      categories.forEach(cat => {
-        const rowTotal1 = matrix1[cat] ? matrix1[cat].reduce((a, b) => a + b, 0) : 0;
-        const rowTotal2 = matrix2[cat] ? matrix2[cat].reduce((a, b) => a + b, 0) : 0;
-        const rowDiff = rowTotal1 - rowTotal2;
-        grandDiff += rowDiff;
-
-        html += `<tr class="border-b hover:bg-slate-50">`;
-        html += `<td class="p-2 border-r font-semibold sticky left-0 bg-white z-10 min-w-[90px] shadow-[1px_0_0_0_#e2e8f0]">${cat}</td>`;
-
-        for (let i = 0; i < maxLen; i++) {
-          const val1 = (matrix1[cat] && matrix1[cat][i] !== undefined) ? matrix1[cat][i] : 0;
-          const val2 = (matrix2[cat] && matrix2[cat][i] !== undefined) ? matrix2[cat][i] : 0;
-          const diffVal = val1 - val2;
-
-          let valText = '-';
-          let textColor = 'text-slate-300';
-
-          if (diffVal !== 0) {
-            valText = (diffVal > 0 ? '+' : '') + diffVal.toLocaleString();
-            if (type === 'expense') {
-              textColor = diffVal > 0 ? 'text-red-600 font-bold' : 'text-blue-600 font-bold';
-            } else {
-              textColor = diffVal > 0 ? 'text-blue-600 font-bold' : 'text-red-600 font-bold';
-            }
-          }
-          html += `<td class="p-2 border-r text-right ${textColor}">${valText}</td>`;
-        }
-
-        let rowDiffText = '-';
-        let rowDiffColor = 'text-slate-400';
-        if (rowDiff !== 0) {
-          rowDiffText = (rowDiff > 0 ? '+¥' : '-¥') + Math.abs(rowDiff).toLocaleString();
-          if (type === 'expense') {
-            rowDiffColor = rowDiff > 0 ? 'text-red-600 font-bold' : 'text-blue-600 font-bold';
-          } else {
-            rowDiffColor = rowDiff > 0 ? 'text-blue-600 font-bold' : 'text-red-600 font-bold';
-          }
-        }
-        html += `<td class="p-2 text-right bg-slate-50 ${rowDiffColor}">${rowDiffText}</td></tr>`;
-      });
-
-      html += `<tr class="bg-indigo-50 font-bold border-t-2 border-indigo-200">`;
-      html += `<td class="p-2 border-r border-indigo-200 sticky left-0 bg-indigo-50 z-10 min-w-[90px]">合計差分</td>`;
-
-      const sumTotals1 = totals1.reduce((a, b) => a + b, 0);
-      const sumTotals2 = totals2.reduce((a, b) => a + b, 0);
-      const totalGrandDiff = sumTotals1 - sumTotals2;
-
-      for (let i = 0; i < maxLen; i++) {
-        const val1 = totals1[i] || 0;
-        const val2 = totals2[i] || 0;
-        const diffVal = val1 - val2;
-
-        let mText = '-';
-        let mColor = 'text-slate-400';
-        if (diffVal !== 0) {
-          mText = (diffVal > 0 ? '+' : '') + diffVal.toLocaleString();
-          if (type === 'expense') {
-            mColor = diffVal > 0 ? 'text-red-600' : 'text-blue-600';
-          } else {
-            mColor = diffVal > 0 ? 'text-blue-600' : 'text-red-600';
-          }
-        }
-        html += `<td class="p-2 border-r border-indigo-200 text-right ${mColor}">${mText}</td>`;
-      }
-
-      let grandText = '¥0';
-      let grandColor = 'text-slate-700';
-      if (totalGrandDiff !== 0) {
-        grandText = (totalGrandDiff > 0 ? '+¥' : '-¥') + Math.abs(totalGrandDiff).toLocaleString();
-        if (type === 'expense') {
-          grandColor = totalGrandDiff > 0 ? 'text-red-600' : 'text-blue-600';
-        } else {
-          grandColor = totalGrandDiff > 0 ? 'text-blue-600' : 'text-red-600';
-        }
-      }
-
-      html += `<td class="p-2 text-right bg-indigo-100 ${grandColor} text-xs">${grandText}</td></tr></tbody></table>`;
-
-      return html;
-    }
-
-    function editTx(index) {
-      const tx = transactions[index];
-      
-      document.querySelector(`input[name="type"][value="${tx.type}"]`).checked = true;
-      updateCategoryOptions();
-      
-      document.getElementById('date').value = tx.date;
-      document.getElementById('category').value = tx.category;
-      document.getElementById('amount').value = tx.amount;
-      document.getElementById('memo').value = tx.memo || '';
-      
-      editingTxIndex = index;
-      
-      const submitBtn = document.getElementById('submit-btn');
-      submitBtn.textContent = '更新する';
-      submitBtn.className = "flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-500 transition";
-      
-      document.getElementById('cancel-edit-btn').classList.remove('hidden');
-      document.getElementById('edit-badge').classList.remove('hidden');
-      
-      document.getElementById('tx-form').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function cancelEdit() {
-      editingTxIndex = -1;
-      
-      document.getElementById('tx-form').reset();
-      document.getElementById('date').value = new Date().toISOString().split('T')[0];
-      document.querySelector(`input[name="type"][value="expense"]`).checked = true;
-      updateCategoryOptions();
-      
-      const submitBtn = document.getElementById('submit-btn');
-      submitBtn.textContent = '追加する';
-      submitBtn.className = "flex-1 bg-slate-800 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-slate-700 transition";
-      
-      document.getElementById('cancel-edit-btn').classList.add('hidden');
-      document.getElementById('edit-badge').classList.add('hidden');
-    }
-
     function clearFilter() {
       document.getElementById('filter-start').value = '';
       document.getElementById('filter-end').value = '';
@@ -1758,13 +1248,6 @@
     function deleteTx(event, index) {
       event.stopPropagation();
       transactions.splice(index, 1);
-      
-      if (editingTxIndex === index) {
-        cancelEdit();
-      } else if (editingTxIndex > index) {
-        editingTxIndex--;
-      }
-      
       updateUI();
     }
 
@@ -1817,7 +1300,7 @@
           displayedCount++;
           const li = document.createElement('li');
           li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border text-xs cursor-pointer hover:bg-slate-100 transition shadow-sm ml-2';
-          li.onclick = () => editTx(originalIndex); 
+          li.onclick = () => openTxModal(null, originalIndex); 
           
           li.innerHTML = `
             <div>
@@ -1842,39 +1325,9 @@
       localStorage.setItem('kakeibo_data', JSON.stringify(transactions));
 
       renderCalendar();
-      if (crossSubMode === 'matrix') {
-        updateCrossCatFilterOptions();
-        renderCrossTable();
-      } else {
-        updateCompCatFilterOptions();
-        renderCompareTables();
-      }
+      updateCrossCatFilterOptions();
+      renderCrossTable();
     }
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const type = form.type.value;
-      const date = document.getElementById('date').value;
-      const category = document.getElementById('category').value;
-      const amount = document.getElementById('amount').value;
-      const memo = document.getElementById('memo').value;
-
-      if (editingTxIndex > -1) {
-        transactions[editingTxIndex] = { type, date, category, amount: Number(amount), memo };
-        cancelEdit();
-      } else {
-        transactions.push({ type, date, category, amount: Number(amount), memo });
-        document.getElementById('amount').value = '';
-        document.getElementById('memo').value = '';
-      }
-
-      transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      const [y, m] = date.split('-').map(Number);
-      historyDate = new Date(y, m - 1, 1);
-
-      updateUI();
-    });
 
     function exportData() {
       const exportObj = {
