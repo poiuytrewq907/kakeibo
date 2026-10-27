@@ -14,7 +14,7 @@
   <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg p-3 sm:p-6 space-y-4">
     <div class="flex justify-between items-center">
       <h1 class="text-xl font-bold text-slate-700">簡単家計簿</h1>
-      <button onclick="openTxModal(selectedDateStr)" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-slate-700 transition shadow-sm flex items-center gap-1">
+      <button onclick="openTxModal()" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-slate-700 transition shadow-sm flex items-center gap-1">
         <span>＋ 収支を追加</span>
       </button>
     </div>
@@ -29,15 +29,6 @@
 
     <!-- ビュー1: カレンダー画面 -->
     <div id="view-calendar" class="space-y-3">
-      <!-- 選択した日付の履歴表示エリア -->
-      <div class="bg-slate-50 p-3 rounded-xl border space-y-2">
-        <div class="flex justify-between items-center">
-          <h2 id="selected-date-label" class="text-xs font-bold text-slate-700">📅 選択日の履歴</h2>
-          <span class="text-[10px] text-slate-400">日付をタップして切替・編集</span>
-        </div>
-        <ul id="selected-date-tx-list" class="space-y-2 max-h-36 overflow-y-auto pr-1"></ul>
-      </div>
-
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100">
           <p class="text-xs text-blue-600 font-semibold mb-0.5">今月の収入</p>
@@ -95,7 +86,7 @@
       <ul id="tx-list" class="space-y-2 max-h-[450px] overflow-y-auto pr-1 pb-1"></ul>
     </div>
 
-    <!-- ビュー3: 分析画面（集計のみにスッキリ簡素化） -->
+    <!-- ビュー3: 分析画面 -->
     <div id="view-cross" class="space-y-4 hidden">
       <div class="space-y-4">
         <!-- サマリー -->
@@ -276,11 +267,12 @@
 
   <!-- 新規登録・編集用ポップアップ（モーダル） -->
   <div id="tx-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4 relative">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4 relative max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
         <h3 id="modal-title" class="text-xs font-bold text-slate-700">収支の追加</h3>
         <button type="button" onclick="closeTxModal()" class="text-slate-400 hover:text-slate-700 font-bold text-sm">✕</button>
       </div>
+      
       <form id="modal-tx-form" class="space-y-3" onsubmit="handleModalSubmit(event)">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">収支タイプ</label>
@@ -297,7 +289,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">日付</label>
-            <input type="date" id="modal-date" class="w-full border rounded-lg p-2 text-xs bg-white" required>
+            <input type="date" id="modal-date" onchange="onModalDateChange(this.value)" class="w-full border rounded-lg p-2 text-xs bg-white" required>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">カテゴリ</label>
@@ -317,9 +309,21 @@
 
         <div class="flex gap-2 pt-1">
           <button type="submit" id="modal-submit-btn" class="flex-1 bg-slate-800 text-white py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition">追加する</button>
-          <button type="button" onclick="closeTxModal()" class="bg-slate-200 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold hover:bg-slate-300 transition">キャンセル</button>
+          <button type="button" onclick="closeTxModal()" class="bg-slate-200 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold hover:bg-slate-300 transition">閉じる</button>
         </div>
       </form>
+
+      <!-- ポップアップ内：その日の履歴一覧 ＆ 合計 -->
+      <div class="bg-slate-50 p-3 rounded-xl border space-y-2 mt-4">
+        <div class="flex justify-between items-center border-b pb-1">
+          <h2 id="modal-date-label" class="text-xs font-bold text-slate-700">📅 その日の履歴</h2>
+          <div class="flex gap-2 text-[10px] font-bold">
+            <span class="text-blue-600">収: <span id="modal-income-sum">¥0</span></span>
+            <span class="text-red-600">支: <span id="modal-expense-sum">¥0</span></span>
+          </div>
+        </div>
+        <ul id="modal-date-tx-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></ul>
+      </div>
     </div>
   </div>
 
@@ -336,7 +340,6 @@
 
     let currentDate = new Date();
     let historyDate = new Date();
-    let selectedDateStr = new Date().toISOString().split('T')[0];
     
     let crossType = 'expense';
     let crossViewType = 'table'; 
@@ -456,6 +459,7 @@
       });
 
       if (view === 'calendar') renderCalendar();
+      if (view === 'history') updateUI();
       if (view === 'cross') {
         updateCrossCatFilterOptions();
         renderCrossTable();
@@ -693,7 +697,9 @@
       const title = document.getElementById('modal-title');
       const submitBtn = document.getElementById('modal-submit-btn');
 
-      const targetDate = dateStr || selectedDateStr || new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const targetDate = dateStr || (editingTxIndex > -1 ? transactions[editingTxIndex].date : todayStr);
+      
       document.getElementById('modal-date').value = targetDate;
 
       if (editingTxIndex > -1) {
@@ -715,12 +721,62 @@
         document.getElementById('modal-memo').value = '';
       }
 
+      renderModalDateTxs(document.getElementById('modal-date').value);
       modal.classList.remove('hidden');
     }
 
     function closeTxModal() {
       document.getElementById('tx-modal').classList.add('hidden');
       editingTxIndex = -1;
+    }
+
+    function onModalDateChange(val) {
+      renderModalDateTxs(val);
+    }
+
+    function renderModalDateTxs(dateStr) {
+      document.getElementById('modal-date-label').textContent = `📅 ${dateStr} の履歴`;
+      const listEl = document.getElementById('modal-date-tx-list');
+      listEl.innerHTML = '';
+
+      const dayTxs = transactions.filter(t => t.date === dateStr);
+
+      let dayInc = 0;
+      let dayExp = 0;
+      dayTxs.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') dayInc += amt;
+        else if (t.type === 'expense') dayExp += amt;
+      });
+
+      document.getElementById('modal-income-sum').textContent = `¥${dayInc.toLocaleString()}`;
+      document.getElementById('modal-expense-sum').textContent = `¥${dayExp.toLocaleString()}`;
+
+      if (dayTxs.length === 0) {
+        listEl.innerHTML = '<li class="text-[11px] text-center text-slate-400 py-2">この日の履歴はありません</li>';
+        return;
+      }
+
+      dayTxs.forEach((item) => {
+        const originalIndex = transactions.indexOf(item);
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center bg-white p-2 rounded border text-xs cursor-pointer hover:bg-slate-100 transition shadow-2xs';
+        li.onclick = () => openTxModal(null, originalIndex);
+
+        li.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-700">${item.category}</div>
+            <div class="text-slate-400 text-[9px] mt-0.5">${item.memo || '-'}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold ${item.type === 'income' ? 'text-blue-600' : 'text-red-600'}">
+              ${item.type === 'income' ? '+' : '-'}¥${Number(item.amount).toLocaleString()}
+            </span>
+            <button type="button" onclick="deleteTx(event, ${originalIndex})" class="text-slate-300 hover:text-red-500 text-xs p-1">✕</button>
+          </div>
+        `;
+        listEl.appendChild(li);
+      });
     }
 
     function handleModalSubmit(e) {
@@ -733,52 +789,22 @@
 
       if (editingTxIndex > -1) {
         transactions[editingTxIndex] = { type, date, category, amount, memo };
+        editingTxIndex = -1;
       } else {
         transactions.push({ type, date, category, amount, memo });
       }
 
       transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      selectedDateStr = date;
       const [y, m] = date.split('-').map(Number);
       historyDate = new Date(y, m - 1, 1);
 
-      closeTxModal();
+      document.getElementById('modal-amount').value = '';
+      document.getElementById('modal-memo').value = '';
+      document.getElementById('modal-submit-btn').textContent = '追加する';
+
       updateUI();
-    }
-
-    function renderSelectedDateTxs() {
-      document.getElementById('selected-date-label').textContent = `📅 ${selectedDateStr} の履歴`;
-      const listEl = document.getElementById('selected-date-tx-list');
-      listEl.innerHTML = '';
-
-      const dayTxs = transactions.filter(t => t.date === selectedDateStr);
-
-      if (dayTxs.length === 0) {
-        listEl.innerHTML = '<li class="text-xs text-center text-slate-400 py-2">この日の履歴はありません</li>';
-        return;
-      }
-
-      dayTxs.forEach((item) => {
-        const originalIndex = transactions.indexOf(item);
-        const li = document.createElement('li');
-        li.className = 'flex justify-between items-center bg-white p-2.5 rounded-lg border text-xs cursor-pointer hover:bg-slate-100 transition shadow-2xs';
-        li.onclick = () => openTxModal(null, originalIndex);
-
-        li.innerHTML = `
-          <div>
-            <div class="font-bold text-slate-700">${item.category}</div>
-            <div class="text-slate-400 text-[10px] mt-0.5">${item.memo || '-'}</div>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="font-bold ${item.type === 'income' ? 'text-blue-600' : 'text-red-600'}">
-              ${item.type === 'income' ? '+' : '-'}¥${Number(item.amount).toLocaleString()}
-            </span>
-            <button type="button" onclick="deleteTx(event, ${originalIndex})" class="text-slate-300 hover:text-red-500 text-sm p-1">✕</button>
-          </div>
-        `;
-        listEl.appendChild(li);
-      });
+      renderModalDateTxs(date);
     }
 
     function renderCalendar() {
@@ -824,9 +850,7 @@
         const cell = document.createElement('div');
         
         let bgClass = "bg-white hover:bg-slate-50 border-slate-200";
-        if (dateStr === selectedDateStr) {
-          bgClass = "border-2 border-slate-800 bg-slate-50";
-        } else if (dayExpense > 0 && dayIncome === 0) {
+        if (dayExpense > 0 && dayIncome === 0) {
           bgClass = "bg-red-50/60 hover:bg-red-50 border-red-200";
         } else if (dayIncome > 0 && dayExpense === 0) {
           bgClass = "bg-blue-50/60 hover:bg-blue-50 border-blue-200";
@@ -836,11 +860,9 @@
 
         cell.className = `h-16 p-0.5 border rounded-md ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
         
-        // カレンダーの日付セルをタップすると、その日の履歴を表示する
+        // カレンダーの日付をタップすると、その日の入力・履歴ポップアップが開く
         cell.onclick = () => {
-          selectedDateStr = dateStr;
-          renderCalendar();
-          renderSelectedDateTxs();
+          openTxModal(dateStr);
         };
 
         let badgeHtml = '';
@@ -853,8 +875,6 @@
         `;
         grid.appendChild(cell);
       }
-
-      renderSelectedDateTxs();
     }
 
     function changeMonth(diff) {
@@ -1158,6 +1178,7 @@
       event.stopPropagation();
       transactions.splice(index, 1);
       updateUI();
+      renderModalDateTxs(document.getElementById('modal-date').value);
     }
 
     function updateUI() {
