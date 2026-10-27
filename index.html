@@ -10,8 +10,9 @@
   <!-- グラフ描画用ライブラリ (Chart.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 min-h-screen">
-  <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg p-6 space-y-4">
+<body class="bg-slate-100 text-slate-800 p-2 sm:p-4 min-h-screen">
+  <!-- スマホで見切れないよう、外側のパディングをスマホ時は狭く(p-3)、PC時は広く(sm:p-6)調整 -->
+  <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg p-3 sm:p-6 space-y-4">
     <h1 class="text-xl font-bold text-center text-slate-700">簡単家計簿</h1>
 
     <!-- 画面切り替えタブ -->
@@ -45,7 +46,8 @@
         <button onclick="changeMonth(1)" class="p-1 text-slate-500 hover:text-slate-800 font-bold text-xs">次月 &gt;</button>
       </div>
 
-      <div class="grid grid-cols-7 text-center text-xs font-bold text-slate-400 border-b pb-1">
+      <!-- 曜日ヘッダー（隙間を極限まで詰める） -->
+      <div class="grid grid-cols-7 text-center text-xs font-bold text-slate-400 border-b pb-1 gap-0.5">
         <span class="text-red-400">日</span>
         <span>月</span>
         <span>火</span>
@@ -55,7 +57,8 @@
         <span class="text-blue-400">土</span>
       </div>
 
-      <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+      <!-- カレンダーの日付グリッド（隙間を極限まで詰める） -->
+      <div id="calendar-grid" class="grid grid-cols-7 gap-0.5 text-center text-xs"></div>
 
       <!-- カレンダー下の追加セクション：当月の収支履歴 ＆ 支出割合円グラフ -->
       <div class="mt-6 border-t pt-4">
@@ -947,7 +950,6 @@
 
         const cell = document.createElement('div');
         
-        // 【レイアウト改善】支出や収入の有無によってセルの背景色をうっすら変えて視認性を向上
         let bgClass = "bg-white hover:bg-slate-50 border-slate-200";
         if (dayExpense > 0 && dayIncome === 0) {
           bgClass = "bg-red-50/60 hover:bg-red-50 border-red-200";
@@ -957,7 +959,8 @@
           bgClass = "bg-purple-50/60 hover:bg-purple-50 border-purple-200";
         }
 
-        cell.className = `h-16 p-1 border rounded-lg ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
+        // セル自体の余白(p-0.5)をタイトにして、めいっぱい横幅と高さを確保
+        cell.className = `h-16 p-0.5 border rounded-md ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
         cell.onclick = () => {
           dateInput.value = dateStr;
           document.getElementById('filter-start').value = dateStr;
@@ -968,12 +971,12 @@
         };
 
         let badgeHtml = '';
-        // 【レイアウト改善】カンマ区切りにし、スマホでも読みやすい太字・サイズに調整
-        if (dayExpense > 0) badgeHtml += `<span class="text-[10px] sm:text-xs text-red-600 font-bold truncate">-¥${dayExpense.toLocaleString()}</span>`;
-        if (dayIncome > 0) badgeHtml += `<span class="text-[10px] sm:text-xs text-blue-600 font-bold truncate">+¥${dayIncome.toLocaleString()}</span>`;
+        // スマホ表示でも見切れないよう、文字サイズを text-[9px] に調整
+        if (dayExpense > 0) badgeHtml += `<span class="text-[9px] sm:text-xs text-red-600 font-bold truncate">-¥${dayExpense.toLocaleString()}</span>`;
+        if (dayIncome > 0) badgeHtml += `<span class="text-[9px] sm:text-xs text-blue-600 font-bold truncate">+¥${dayIncome.toLocaleString()}</span>`;
 
         cell.innerHTML = `
-          <span class="font-bold text-slate-700 text-left text-xs">${day}</span>
+          <span class="font-bold text-slate-700 text-left text-[11px] px-0.5">${day}</span>
           <div class="flex flex-col text-right font-semibold leading-tight">${badgeHtml}</div>
         `;
         grid.appendChild(cell);
