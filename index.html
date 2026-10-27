@@ -272,6 +272,18 @@
         <h3 id="modal-title" class="text-xs font-bold text-slate-700">収支の追加</h3>
         <button type="button" onclick="closeTxModal()" class="text-slate-400 hover:text-slate-700 font-bold text-sm">✕</button>
       </div>
+
+      <!-- ポップアップ内上部：その日の収支それぞれの合計値（少し大きめ） -->
+      <div class="grid grid-cols-2 gap-2 text-center bg-slate-50 p-3 rounded-xl border">
+        <div class="bg-blue-50 p-2 rounded-lg border border-blue-100">
+          <p class="text-[10px] text-blue-600 font-semibold">収入</p>
+          <p id="modal-income-sum" class="text-base font-bold text-blue-700">¥0</p>
+        </div>
+        <div class="bg-red-50 p-2 rounded-lg border border-red-100">
+          <p class="text-[10px] text-red-600 font-semibold">支出</p>
+          <p id="modal-expense-sum" class="text-base font-bold text-red-700">¥0</p>
+        </div>
+      </div>
       
       <form id="modal-tx-form" class="space-y-3" onsubmit="handleModalSubmit(event)">
         <div>
@@ -313,14 +325,10 @@
         </div>
       </form>
 
-      <!-- ポップアップ内：その日の履歴一覧 ＆ 合計 -->
-      <div class="bg-slate-50 p-3 rounded-xl border space-y-2 mt-4">
-        <div class="flex justify-between items-center border-b pb-1">
+      <!-- ポップアップ内下部：その日の履歴一覧 -->
+      <div class="bg-slate-50 p-3 rounded-xl border space-y-2 mt-2">
+        <div class="border-b pb-1">
           <h2 id="modal-date-label" class="text-xs font-bold text-slate-700">📅 その日の履歴</h2>
-          <div class="flex gap-2 text-[10px] font-bold">
-            <span class="text-blue-600">収: <span id="modal-income-sum">¥0</span></span>
-            <span class="text-red-600">支: <span id="modal-expense-sum">¥0</span></span>
-          </div>
         </div>
         <ul id="modal-date-tx-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></ul>
       </div>
@@ -690,7 +698,6 @@
       renderSettingsUI();
     }
 
-    // ポップアップ（モーダル）を開く・閉じる・保存する関数
     function openTxModal(dateStr = null, index = -1) {
       editingTxIndex = index;
       const modal = document.getElementById('tx-modal');
@@ -860,7 +867,6 @@
 
         cell.className = `h-16 p-0.5 border rounded-md ${bgClass} cursor-pointer flex flex-col justify-between transition shadow-2xs`;
         
-        // カレンダーの日付をタップすると、その日の入力・履歴ポップアップが開く
         cell.onclick = () => {
           openTxModal(dateStr);
         };
